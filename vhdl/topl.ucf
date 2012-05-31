@@ -1,0 +1,23 @@
+CONFIG PART = xc6vlx240tff1156-1;
+
+########## ML605 Board ##########
+NET CLK_IN_P        LOC = J9   |IOSTANDARD = LVDS_25  |DIFF_TERM = TRUE;
+NET CLK_IN_N        LOC = H9   |IOSTANDARD = LVDS_25  |DIFF_TERM = TRUE;
+
+Net RESET           LOC = H10  |IOSTANDARD = LVCMOS15 |TIG;
+# downgrade the Place:1153 error in the mapper
+NET "RESET" CLOCK_DEDICATED_ROUTE = FALSE;
+
+# fan control: low = fan off, high = fan on
+NET SM_FAN_PWM      LOC = L10;
+
+
+#### Module LEDs_8Bit constraints
+NET "USER_LED[0]" LOC = AC22;
+NET "USER_LED[1]" LOC = AC24;
+NET "USER_LED[2]" LOC = AE22;
+NET "USER_LED[3]" LOC = AE23;
+NET "USER_LED[4]" LOC = AB23;
+NET "USER_LED[5]" LOC = AG23;
+NET "USER_LED[6]" LOC = AE24;
+NET "USER_LED[7]" LOC = AD24;
