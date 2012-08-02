@@ -3,6 +3,8 @@ CONFIG PART = xc6vlx240tff1156-1;
 ########## ML605 Board ##########
 NET CLK_IN_P        LOC = J9   |IOSTANDARD = LVDS_25  |DIFF_TERM = TRUE;
 NET CLK_IN_N        LOC = H9   |IOSTANDARD = LVDS_25  |DIFF_TERM = TRUE;
+NET "CLK_IN_P" TNM_NET = "CLK_IN_P";
+TIMESPEC "TS_CLK_IN_P" = PERIOD "CLK_IN_P" 5 ns HIGH 50 %;
 
 Net RESET           LOC = H10  |IOSTANDARD = LVCMOS15 |TIG;
 # downgrade the Place:1153 error in the mapper
@@ -13,11 +15,20 @@ NET SM_FAN_PWM      LOC = L10;
 
 
 #### Module LEDs_8Bit constraints
-NET "USER_LED[0]" LOC = AC22;
-NET "USER_LED[1]" LOC = AC24;
-NET "USER_LED[2]" LOC = AE22;
-NET "USER_LED[3]" LOC = AE23;
-NET "USER_LED[4]" LOC = AB23;
-NET "USER_LED[5]" LOC = AG23;
-NET "USER_LED[6]" LOC = AE24;
-NET "USER_LED[7]" LOC = AD24;
+#NET "USER_LED[0]" LOC = AC22;
+#NET "USER_LED[1]" LOC = AC24;
+#NET "USER_LED[2]" LOC = AE22;
+#NET "USER_LED[3]" LOC = AE23;
+#NET "USER_LED[4]" LOC = AB23;
+#NET "USER_LED[5]" LOC = AG23;
+#NET "USER_LED[6]" LOC = AE24;
+#NET "USER_LED[7]" LOC = AD24;
+
+##### Module LCD constraints
+NET SF_D<0> 	LOC = "AD14"; ## 4 on J41
+NET SF_D<1> 	LOC = "AK11"; ## 3 on J41
+NET SF_D<2> 	LOC = "AJ11"; ## 2 on J41
+NET SF_D<3> 	LOC = "AE12"; ## 1 on J41
+NET LCD_E   	LOC = "AK12"; ## 9 on J41
+NET LCD_RS  	LOC = "T28"; ## 11 on J41
+NET LCD_RW	  	LOC = "AC14"; ## 10 on J41

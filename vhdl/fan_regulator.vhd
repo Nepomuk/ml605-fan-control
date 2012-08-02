@@ -1,13 +1,13 @@
 -- -----------------------------------------------------------------------------
 --
---                         Andr Goerres  |       ######
---     Institut fr Kernphysik 1 (IKP-1)  |    #########
+--                         Andre Goerres  |       ######
+--    Institut fuer Kernphysik 1 (IKP-1)  |    #########
 --        Forschungszentrum Juelich GmbH  |   #########   ##
 --              D-52425 Juelich, Germany  |  #########   ####
 --                                        |  ########   #####
 --             (+49)2461 61 6225 :   Tel  |   #   ##   #####
 --             (+49)2461 61 3573 :   FAX  |    ##     #####
---       a.goerres@fz-juelich.de : EMail  |       ######
+--       a.goerres@fz-juelich.de : E-Mail |       ######
 --
 -- -----------------------------------------------------------------------------
 -- =============================================================================
@@ -27,8 +27,8 @@
 --              should enable averaging over 16 measurements to get less statistical
 --              fluctuations.
 --
---              There is a temperature display on the 8 user LEDs next to the
---              user switches which you can use. If not, leave the port open.
+--              There is a temperature display on the LCD. If you don't want to use
+--              it, just leave the ports open and don't use the LCD module.
 --
 -- History
 -- Date     | Rev | Author    | What
@@ -44,6 +44,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
 use IEEE.NUMERIC_STD.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL; 
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx primitives in this code.
@@ -58,12 +59,17 @@ use IEEE.NUMERIC_STD.ALL;
 entity fan_regulator is
 	port (
 	   -- system signals
-		CLK_66			: in  STD_LOGIC;       -- 66 MHz clock
+		CLK				: in  STD_LOGIC;       -- 50 MHz clock
 		RESET          : in  STD_LOGIC;       -- global reset
-		DISPLAY			: out STD_LOGIC_VECTOR (7 downto 0); 
 		
 		-- the fan output
-		FAN_PWM			: out STD_LOGIC
+		FAN_PWM			: out STD_LOGIC;
+		
+		-- some output values for displaying on the LCD
+		TEMP_OUT			: out std_logic_vector(7 downto 0);
+		TEMP_ADC_OUT	: out std_logic_vector(9 downto 0);
+		FAN_SPEED_OUT	: out std_logic_vector(5 downto 0)
+		
 	);
 end fan_regulator;
 
@@ -107,7 +113,7 @@ architecture Behavioral of fan_regulator is
 	
 	-- start singal declaration ----------------------------------------
 	
-	constant clk_freq          : integer := 66000000;  -- one second at clock frequency
+	constant clk_freq          : integer := 50000000;  -- one second at clock frequency
 	constant temp_address      : std_logic_vector (7 downto 0) := x"00";
 	
 	-- Define ranges for temperature that defines, how rapidly the
@@ -121,7 +127,7 @@ architecture Behavioral of fan_regulator is
 	constant temp_max_difference  : integer := 20;   -- 20 ADC-steps => 10C
 	
 	-- it is more easy to just give the fan speed in ADC values
-	constant fan_speed_min     : integer := 7;   -- ~1/4 is the minimum duty cycle for the fan to run
+	constant fan_speed_min     : integer := 8;   -- ~1/4 is the minimum duty cycle for the fan to run
 	constant fan_speed_max     : integer := temp_max_difference + fan_speed_min;
 	signal fan_speed           : integer range 0 to fan_speed_max;
 	signal pwm_int             : std_logic;
@@ -130,10 +136,10 @@ architecture Behavioral of fan_regulator is
 	signal ctr_on              : integer range 0 to fan_speed_max := 0;
 	signal ctr_fan             : integer range 0 to fan_speed_max := 0;
 	
-	-- If the temperature is averaged over 16 measurements (can be 
-	-- configured in the sysmon IP core) and the clock is 66 MHz this
-	-- leads to new temperature values every three seconds.
-	constant temp_read_cycle : integer := 4125000 * 3;
+	-- If the temperature is averaged over 256 measurements (can be 
+	-- configured in the sysmon IP core) and the clock is 50 MHz this
+	-- leads to new temperature values roughly every 100 milliseconds.
+	constant temp_read_cycle : integer := 2000000;
 	signal ctr_temp          : integer range 0 to (temp_read_cycle+1);
 	
 	signal tmp_data_read   : std_logic;
@@ -149,14 +155,14 @@ begin
 	
 	U_SYSMON : sysmon_wiz_v2_1
 	port map ( 
-		RESET_IN            => RESET, 
+		RESET_IN            => RESET,
 		
 		-- data ports
 		DADDR_IN            => temp_address(6 downto 0), 
-		DCLK_IN             => CLK_66, 
+		DCLK_IN             => CLK, 
 		DEN_IN              => tmp_data_read, 
 		DI_IN               => (others => '0'),
-		DWE_IN              => '0', 
+		DWE_IN              => '0',
 		DO_OUT              => temp_data_out,
 		DRDY_OUT            => temp_data_ready,
 		
@@ -170,165 +176,81 @@ begin
 		VP_IN               => '0', 
 		VN_IN               => '0'
 	);
-	
-	process ( temp_current )
-	begin
-		if ( temp_current < 606 ) then   -- < 25C
-			DISPLAY <= "00000000";
-		elsif ( temp_current >= 606 and temp_current < 626  ) then      -- 25,0-35,0C
-			DISPLAY (3 downto 0) <= "0001";
-			if ( temp_current >= 606 and temp_current < 611  ) then      --   25,0-27,5C
-				DISPLAY (7 downto 4) <= "0001";
-			elsif ( temp_current >= 611 and temp_current < 616  ) then   --   27,5-30,0C
-				DISPLAY (7 downto 4) <= "0011";
-			elsif ( temp_current >= 616 and temp_current < 621  ) then   --   30,0-32,5C
-				DISPLAY (7 downto 4) <= "0111";
-			elsif ( temp_current >= 621 and temp_current < 626  ) then   --   32,5-35,0C
-				DISPLAY (7 downto 4) <= "1111";
-			else
-				DISPLAY (7 downto 4) <= "0000";
-			end if;
-		elsif ( temp_current >= 626 and temp_current < 646  ) then      -- 35,0-45,0C
-			DISPLAY (3 downto 0) <= "0011";
-			if ( temp_current >= 626 and temp_current < 631  ) then      --   35,0-37,5C
-				DISPLAY (7 downto 4) <= "0001";
-			elsif ( temp_current >= 631 and temp_current < 636  ) then   --   37,5-40,0C
-				DISPLAY (7 downto 4) <= "0011";
-			elsif ( temp_current >= 636 and temp_current < 641  ) then   --   40,0-42,5C
-				DISPLAY (7 downto 4) <= "0111";
-			elsif ( temp_current >= 641 and temp_current < 646  ) then   --   42,5-45,0C
-				DISPLAY (7 downto 4) <= "1111";
-			else
-				DISPLAY (7 downto 4) <= "0000";
-			end if;
-		elsif ( temp_current >= 646 and temp_current < 667  ) then      -- 45,0-55,0C
-			DISPLAY (3 downto 0) <= "0111";
-			if ( temp_current >= 646 and temp_current < 652  ) then      --   45,0-47,5C
-				DISPLAY (7 downto 4) <= "0001";
-			elsif ( temp_current >= 652 and temp_current < 657  ) then   --   47,5-40,0C
-				DISPLAY (7 downto 4) <= "0011";
-			elsif ( temp_current >= 657 and temp_current < 662  ) then   --   50,0-52,5C
-				DISPLAY (7 downto 4) <= "0111";
-			elsif ( temp_current >= 662 and temp_current < 667  ) then   --   52,5-55,0C
-				DISPLAY (7 downto 4) <= "1111";
-			else
-				DISPLAY (7 downto 4) <= "0000";
-			end if;
-		elsif ( temp_current >= 667 ) then   -- > 55C
-			DISPLAY <= "11111111";
-		else
-			DISPLAY <= "10101010";
-		end if;
-
---		if ( temp_current < 606 ) then   -- < 25C
---			DISPLAY <= "00000000";
---		elsif ( temp_current >= 606 and temp_current < 616  ) then      -- 25,0-30,0C
---			DISPLAY (3 downto 0) <= "0001";
---			if ( temp_current >= 606 and temp_current < 608  ) then      --   25,0-26,0C
---				DISPLAY (7 downto 4) <= "0000";
---			elsif ( temp_current >= 608 and temp_current < 610  ) then   --   26,0-27,0C
---				DISPLAY (7 downto 4) <= "0001";
---			elsif ( temp_current >= 610 and temp_current < 612  ) then   --   27,0-28,0C
---				DISPLAY (7 downto 4) <= "0011";
---			elsif ( temp_current >= 612 and temp_current < 614  ) then   --   28,0-29,0C
---				DISPLAY (7 downto 4) <= "0111";
---			elsif ( temp_current >= 614 and temp_current < 616  ) then   --   29,0-30,0C
---				DISPLAY (7 downto 4) <= "1111";
---			end if;
---		elsif ( temp_current >= 616 and temp_current < 626  ) then      -- 30,0-35,0C
---			DISPLAY (3 downto 0) <= "0011";
---			if ( temp_current >= 616 and temp_current < 618  ) then      --   30,0-31,0C
---				DISPLAY (7 downto 4) <= "0000";
---			elsif ( temp_current >= 618 and temp_current < 620  ) then   --   31,0-32,0C
---				DISPLAY (7 downto 4) <= "0001";
---			elsif ( temp_current >= 620 and temp_current < 622  ) then   --   32,0-33,0C
---				DISPLAY (7 downto 4) <= "0011";
---			elsif ( temp_current >= 622 and temp_current < 624  ) then   --   33,0-34,0C
---				DISPLAY (7 downto 4) <= "0111";
---			elsif ( temp_current >= 624 and temp_current < 626  ) then   --   34,0-35,0C
---				DISPLAY (7 downto 4) <= "1111";
---			end if;
---		elsif ( temp_current >= 626 and temp_current < 636  ) then      -- 35,0-40,0C
---			DISPLAY (3 downto 0) <= "0111";
---			if ( temp_current >= 626 and temp_current < 628  ) then      --   35,0-36,0C
---				DISPLAY (7 downto 4) <= "0000";
---			elsif ( temp_current >= 628 and temp_current < 630  ) then   --   36,0-37,0C
---				DISPLAY (7 downto 4) <= "0001";
---			elsif ( temp_current >= 630 and temp_current < 632  ) then   --   37,0-38,0C
---				DISPLAY (7 downto 4) <= "0011";
---			elsif ( temp_current >= 632 and temp_current < 634  ) then   --   38,0-39,0C
---				DISPLAY (7 downto 4) <= "0111";
---			elsif ( temp_current >= 634 and temp_current < 636  ) then   --   39,0-40,0C
---				DISPLAY (7 downto 4) <= "1111";
---			end if;
---		elsif ( temp_current >= 636 and temp_current < 646  ) then      -- 40,0-45,0C
---			DISPLAY (3 downto 0) <= "1111";
---			if ( temp_current >= 636 and temp_current < 638  ) then      --   40,0-41,0C
---				DISPLAY (7 downto 4) <= "0000";
---			elsif ( temp_current >= 638 and temp_current < 640  ) then   --   41,0-42,0C
---				DISPLAY (7 downto 4) <= "0001";
---			elsif ( temp_current >= 640 and temp_current < 642  ) then   --   42,0-43,0C
---				DISPLAY (7 downto 4) <= "0011";
---			elsif ( temp_current >= 642 and temp_current < 644  ) then   --   43,0-44,0C
---				DISPLAY (7 downto 4) <= "0111";
---			elsif ( temp_current >= 644 and temp_current < 646  ) then   --   44,0-45,0C
---				DISPLAY (7 downto 4) <= "1111";
---			end if;
---		elsif ( temp_current >= 646 ) then   -- > 45C
---			DISPLAY <= "10101010";
---		else
---			DISPLAY <= "10000001";
---		end if;
-	end process;
 		
 		
 	-- translate the temperature into an integer
-	process ( temp_data_out, temp_data_ready )
+	process ( CLK, temp_data_out, temp_data_ready )
+		variable tmp_temp_current  : integer range 0 to 1023;
+		variable tmp_temp_celcius  : std_logic_vector(8 downto 0);
 	begin
-		if rising_edge( temp_data_ready ) then
-			temp_current <= to_integer(unsigned( temp_data_out(15 downto 6) ));
+		if rising_edge(CLK) then
+			if temp_data_ready = '1' then
+				tmp_temp_current := to_integer(unsigned( temp_data_out(15 downto 6) ));
+				
+				-- There is sometimes a bug in the temperature value: when at
+				-- around 42C, the ADC shows suddenly a value much higher/lower
+				-- than before. That can't be right, so lets set it then fixed
+				-- to 42C (equals ADC 640).
+				if ( tmp_temp_current = 544 or tmp_temp_current = 767 ) then
+					tmp_temp_current := 640;
+				end if;
+				
+				temp_current <= tmp_temp_current;
+				
+				
+				tmp_temp_celcius := temp_data_out(15 downto 7) - 278;
+				TEMP_OUT <= tmp_temp_celcius(7 downto 0);
+				
+				TEMP_ADC_OUT <= temp_data_out(15 downto 6);
+			end if;
 		end if;
 	end process;
 	
 	
 	-- check, if the temperature changes and adapt the fan setting
-	process ( temp_current )
+	process ( CLK, temp_current )
 		variable tmp_fan_speed         : integer range 0 to fan_speed_max*2;
 	begin
-	
-		-- we have reached the maximum difference accepted - turn to max speed
-		if ( temp_current > temp_target_value + temp_max_difference ) then
-			fan_speed <= fan_speed_max;
-			
-		-- we are below target temperature - turn to min speed
-		elsif ( temp_current <= temp_target_value ) then
-			fan_speed <= 0;
+		if rising_edge( CLK ) then
 		
-		-- apparently we are not in the extreme region, so lets moderate the fan speed
-		--elsif ( temp_current > temp_target_value ) then
-		else
-		
-			-- the fan speed is given in ADC steps difference from target temperature
-			tmp_fan_speed := temp_current - temp_target_value + fan_speed_min;
-			
-			-- apply the new fan speed
-			if ( tmp_fan_speed >= fan_speed_max ) then
+			-- we have reached the maximum difference accepted - turn to max speed
+			if ( temp_current > temp_target_value + temp_max_difference ) then
 				fan_speed <= fan_speed_max;
-			elsif ( tmp_fan_speed < fan_speed_min ) then
-				fan_speed <= 0;
+				
+			-- we are below target temperature - turn to min speed
+			elsif ( temp_current <= temp_target_value ) then
+				fan_speed <= fan_speed_min;
+			
 			else
-				fan_speed <= tmp_fan_speed;
+			
+				-- the fan speed is given in ADC steps difference from target temperature
+				tmp_fan_speed := temp_current - temp_target_value + fan_speed_min;
+				
+				-- apply the new fan speed
+				if ( tmp_fan_speed >= fan_speed_max ) then
+					fan_speed <= fan_speed_max;
+				elsif ( tmp_fan_speed < fan_speed_min ) then
+					fan_speed <= fan_speed_min;
+				else
+					fan_speed <= tmp_fan_speed;
+				end if;
+				
+			end if; -- end temperature switch
+			
+			if ( fan_speed > 0 ) then
+				FAN_SPEED_OUT <= std_logic_vector(to_unsigned(fan_speed-fan_speed_min+1, FAN_SPEED_OUT'length));
+			else
+				FAN_SPEED_OUT <= (others => '0');
 			end if;
 			
-		end if; -- end temperature switch
-		
+		end if;
 	end process;
 	
 
 	-- enable the fan for a fraction of 20 clock cycles
-	process ( CLK_66 )
+	process ( CLK )
 	begin
-		if rising_edge( CLK_66 ) then
+		if rising_edge( CLK ) then
 			if ( ctr_temp = temp_read_cycle ) then
 				tmp_data_read <= '1';
 				ctr_temp <= 0;

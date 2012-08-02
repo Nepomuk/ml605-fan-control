@@ -1,0 +1,22 @@
+# .gitignore for a Xilinx VHDL directory
+#
+# It is easier to ignore all and just make exceptions to
+# that, since Xilinx is creating a lot of different files
+# during the compilation process.
+
+# exclude everything
+*
+
+# include VHDL stuff
+!vhdl/
+!ipcore_dir/
+!*.vhd
+!*.vho
+!*.xco
+!*.xise
+
+# include this file
+!/.gitignore
+
+# include readme and other documentation
+!*.md
