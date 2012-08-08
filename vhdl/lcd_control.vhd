@@ -157,6 +157,35 @@ architecture lcd_control_arch of lcd_control is
 		return bcd;
 	end to_bcd;
 	
+	
+	-- A function that converts a 4 bit hexadecimal number to
+	-- the matching ASCII character values. Basically just a
+	-- look up table.
+	function hex2char ( hex : std_logic_vector(3 downto 0) ) return std_logic_vector is
+		variable char : std_logic_vector(7 downto 0) := x"20";
+	begin
+		case hex is
+			when x"0" => char := x"30";
+			when x"1" => char := x"31";
+			when x"2" => char := x"32";
+			when x"3" => char := x"33";
+			when x"4" => char := x"34";
+			when x"5" => char := x"35";
+			when x"6" => char := x"36";
+			when x"7" => char := x"37";
+			when x"8" => char := x"38";
+			when x"9" => char := x"39";
+			when x"a" => char := x"61";
+			when x"b" => char := x"62";
+			when x"c" => char := x"63";
+			when x"d" => char := x"64";
+			when x"e" => char := x"65";
+			when x"f" => char := x"66";
+			when others => char := x"3f";
+		end case;
+		return char;
+	end hex2char;
+	
 begin 
 
 
@@ -436,7 +465,7 @@ begin
 				upper_line( 5) <= x"61"; -- a
 				upper_line( 6) <= x"72"; -- r
 				upper_line( 7) <= x"65"; -- e
-				upper_line( 8) <= x"20"; -- [blank]
+				upper_line( 8) <= x"20"; -- 
 				upper_line( 9) <= x"6c"; -- l
 				upper_line(10) <= x"6f"; -- o
 				upper_line(11) <= x"61"; -- a
@@ -452,7 +481,7 @@ begin
 				lower_line( 4) <= x"6e"; -- n
 				lower_line( 5) <= x"65"; -- e
 				lower_line( 6) <= x"3a"; -- :
-				lower_line( 7) <= x"20"; -- [blank]
+				lower_line( 7) <= x"20"; -- 
 				lower_line( 8) <= x"30" or std_logic_vector(to_unsigned(hours_tens, 4)); -- [0..9]
 				lower_line( 9) <= x"30" or std_logic_vector(to_unsigned(hours_ones, 4)); -- [0..9]
 				lower_line(10) <= x"3a"; -- :
@@ -470,17 +499,17 @@ begin
 				
 				upper_line( 0) <= x"54"; -- T
 				upper_line( 1) <= x"3a"; -- :
-				upper_line( 2) <= x"20"; -- [blank]
+				upper_line( 2) <= x"20"; -- 
 				upper_line( 3) <= x"30" or temp_bcd(7 downto 4); -- [0..9]
 				upper_line( 4) <= x"30" or temp_bcd(3 downto 0); -- [0..9]
-				upper_line( 5) <= x"43"; -- C
-				upper_line( 6) <= x"20"; -- [blank]
-				upper_line( 7) <= x"20"; -- [blank]
+				upper_line( 5) <= x"df"; -- 
+				upper_line( 6) <= x"43"; -- C
+				upper_line( 7) <= x"20"; -- 
 				upper_line( 8) <= x"41"; -- A
 				upper_line( 9) <= x"44"; -- D
 				upper_line(10) <= x"43"; -- C
 				upper_line(11) <= x"3a"; -- :
-				upper_line(12) <= x"20"; -- [blank]
+				upper_line(12) <= x"20"; -- 
 				upper_line(13) <= x"30" or temp_adc_bcd(11 downto 8); -- [0..9]
 				upper_line(14) <= x"30" or temp_adc_bcd(7 downto 4); -- [0..9]
 				upper_line(15) <= x"30" or temp_adc_bcd(3 downto 0); -- [0..9]
@@ -488,14 +517,14 @@ begin
 				lower_line( 0) <= x"46"; -- F
 				lower_line( 1) <= x"61"; -- a
 				lower_line( 2) <= x"6e"; -- n
-				lower_line( 3) <= x"20"; -- [blank]
+				lower_line( 3) <= x"20"; -- 
 				lower_line( 4) <= x"73"; -- s
 				lower_line( 5) <= x"70"; -- p
 				lower_line( 6) <= x"65"; -- e
 				lower_line( 7) <= x"65"; -- e
 				lower_line( 8) <= x"64"; -- d
 				lower_line( 9) <= x"3a"; -- :
-				lower_line(10) <= x"20"; -- [blank]
+				lower_line(10) <= x"20"; -- 
 				if ( fan_speed_bcd(7 downto 0) = x"00" ) then
 					lower_line(11) <= x"2d"; -- -
 					lower_line(12) <= x"2d"; -- -
@@ -503,9 +532,9 @@ begin
 					lower_line(11) <= x"30" or fan_speed_bcd(7 downto 4); -- [0..1]
 					lower_line(12) <= x"30" or fan_speed_bcd(3 downto 0); -- [0..9]
 				end if;
-				lower_line(13) <= x"20"; -- [blank]
-				lower_line(14) <= x"20"; -- [blank]
-				lower_line(15) <= x"20"; -- [blank]
+				lower_line(13) <= x"20"; -- 
+				lower_line(14) <= x"20"; -- 
+				lower_line(15) <= x"20"; -- 
 			end if;
 		end if;
 	end process what_to_display;
